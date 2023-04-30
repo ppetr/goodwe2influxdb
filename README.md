@@ -19,7 +19,7 @@ Then set up [Telegraf] to run the script. For example create
 [[inputs.execd]]
 interval = "60s"
 tags = {}
-command = ["/usr/bin/env", "python3", "/mnt/ext/p/projects/goodwe/main.py"]
+command = ["/usr/bin/env", "python3", "/usr/local/bin/goodwe2influxdb"]
 signal = "STDIN"
 restart_delay = "60s"
 data_format = "influx"
