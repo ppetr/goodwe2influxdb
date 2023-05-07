@@ -30,3 +30,7 @@ be overriden with `--ip_address`) and stores collected data in table
 `photovoltaic` in the database (can be overriden with `--measurement_name`).
 
 [Telegraf]: https://www.influxdata.com/time-series-platform/telegraf/
+
+## Contributions
+
+Please see [Code of Conduct](docs/code-of-conduct.md) and [Contributing](docs/contributing.md).
