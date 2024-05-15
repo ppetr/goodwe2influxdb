@@ -14,18 +14,25 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+"""Queries a local AZ-router device and emits its status to stdout.
+
+A query is triggered by receiving a newline in stdin (Telegraf execd input
+module's 'STDIN' signalling protocol).
+
+Data is emitted in the InfluxDB line format.
+"""
+
+
 import aiohttp
 import argparse
-import asyncio
 import logging
 from numbers import Number
-import os
-from typing import Any, Iterator, Optional, Tuple
+from typing import Any, Iterator, Tuple
 from urllib.parse import urlunsplit
-import sys
 
-import goodwe
 from influxdb_client import Point
+
+import telegraf_plugin_main
 
 _DEFAULT_HOST = 'azrouter.local'
 
@@ -69,8 +76,7 @@ def unroll_json(prefix: str, json) -> Iterator[Tuple[str, Any]]:
         type(json).__qualname__, json))
 
 
-async def build_point(measurement_name: str, tags: dict[str, str],
-                      json) -> Point:
+def build_point(measurement_name: str, tags: dict[str, str], json) -> Point:
   point = Point(measurement_name)
   for tag in tags:
     point.tag(tag, tags[tag])
@@ -79,55 +85,27 @@ async def build_point(measurement_name: str, tags: dict[str, str],
   return point
 
 
-async def print_sample(measurement_name: str, tags: dict[str, str], json):
-  logging.info('Response data: %s', str(json))
-  point = await build_point(measurement_name, tags, json)
-  logging.info('In line format: %s', point.to_line_protocol())
-
-
-async def stdin_lines():
-  """An asychronous generator that returns lines read from stdin."""
-  reader = asyncio.StreamReader()
-  reader_protocol = asyncio.StreamReaderProtocol(reader)
-  await asyncio.get_event_loop().connect_read_pipe(lambda: reader_protocol,
-                                                   sys.stdin)
-  while True:
-    line = await reader.readline()
-    if not line:
-      break
-    yield line
-
-
-async def query_data(measurement_name: str,
-                     host: Optional[str] = _DEFAULT_HOST):
-  async with aiohttp.ClientSession() as session:
-    if os.isatty(sys.stdout.fileno()):
-      logging.info('stdout is a tty, printing a single query result')
-      status_json = await status(session, host)
-      power_json = await power(session, host)
-      await print_sample(measurement_name, {}, {**status_json, **power_json})
-      return
-
-    async for _ in stdin_lines():
-      result = await status(session, host)
-      point = await build_point(measurement_name, {}, result)
-      line = point.to_line_protocol()
-      logging.debug('Emitting data in the line format: %s', line)
-      print(line, flush=True)
-
-
-def main():
+async def query_data():
   logging.basicConfig(level=logging.INFO)
   parser = argparse.ArgumentParser(
       prog='azrouter2influxdb',
-      description='On every new line received on stdin reads data from '
-      'a local AZ-router device and outputs it to stdout in the '
-      'InfluxDB line format.')
-  parser.add_argument('--ip_address', default='azrouter.local')
+      description=__doc__)
+  parser.add_argument('--ip_address', default=_DEFAULT_HOST)
   parser.add_argument('-m', '--measurement_name', default='azrouter')
   args = parser.parse_args()
 
-  asyncio.run(query_data(args.measurement_name, args.ip_address))
+  async with aiohttp.ClientSession() as session:
+    while True:
+      status_json = await status(session, args.ip_address)
+      power_json = await power(session, args.ip_address)
+      yield build_point(args.measurement_name, {}, {
+          **status_json,
+          **power_json
+      })
+
+
+def main():
+  telegraf_plugin_main.main(query_data())
 
 
 if __name__ == '__main__':

@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-# Copyright 2022 Google LLC
+# Copyright 2024 Google LLC
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -14,15 +14,22 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+"""Queries a local Goodwe inverter device and emits its status to stdout.
+
+A query is triggered by receiving a newline in stdin (Telegraf execd input
+module's 'STDIN' signalling protocol).
+
+Data is emitted in the InfluxDB line format.
+"""
+
 import argparse
-import asyncio
 import logging
-import os
-from typing import Optional
-import sys
+from typing import AsyncIterable
 
 import goodwe
 from influxdb_client import Point
+
+import telegraf_plugin_main
 
 # Transformation of unit names to field name suffixes.
 _UNIT_MAP = {"%": "pct", "1": None}
@@ -32,7 +39,7 @@ _IGNORED_FIELDS = {"timestamp"}
 async def detect_ip_address():
   response = await goodwe.search_inverters()
   logging.info("Received UDP broadcast: %s", response)
-  return response.split(b",", 1)[0].decode('ASCII')
+  return response.split(b",", 1)[0].decode("ASCII")
 
 
 async def read_point(inverter, measurement_name: str, tags):
@@ -52,41 +59,21 @@ async def read_point(inverter, measurement_name: str, tags):
   return point
 
 
-async def print_sample(inverter, measurement_name: str, tags):
-  print("Tags:")
-  for tag in tags:
-    print(f"{tag}: \t\t {tags[tag]}")
-  print("\nRuntime data:")
-  runtime_data = await inverter.read_runtime_data()
-  for sensor in inverter.sensors():
-    if sensor.id_ in runtime_data:
-      print(
-          f"{sensor.id_}: \t\t {sensor.name} = {runtime_data[sensor.id_]} {sensor.unit}"
-      )
-  print("\nIn line format:")
-  point = await read_point(inverter, measurement_name, tags)
-  print(point.to_line_protocol())
+async def query_data() -> AsyncIterable[Point]:
+  logging.basicConfig(level=logging.WARNING)
+  parser = argparse.ArgumentParser(
+      prog="goodwe2influxdb",
+      description=__doc__)
+  parser.add_argument("--ip_address")  # option that takes a value
+  parser.add_argument("-m", "--measurement_name",
+                      default="photovoltaic")  # option that takes a value
+  args = parser.parse_args()
 
+  if args.ip_address is None:
+    args.ip_address = await detect_ip_address()
+  inverter = await goodwe.connect(args.ip_address)
 
-async def stdin_lines():
-  """An asychronous generator that returns lines read from stdin."""
-  reader = asyncio.StreamReader()
-  reader_protocol = asyncio.StreamReaderProtocol(reader)
-  await asyncio.get_event_loop().connect_read_pipe(lambda: reader_protocol,
-                                                   sys.stdin)
-  while True:
-    line = await reader.readline()
-    if not line:
-      break
-    yield line
-
-
-async def get_runtime_data(ip_address: Optional[str], measurement_name: str):
-  if ip_address is None:
-    ip_address = await detect_ip_address()
-  inverter = await goodwe.connect(ip_address)
-
-  tags = {"ip_address": ip_address}
+  tags = {"ip_address": args.ip_address}
   for attr in [
       "model_name", "serial_number", "dsp1_version", "dsp2_version",
       "arm_version", "firmware"
@@ -95,31 +82,12 @@ async def get_runtime_data(ip_address: Optional[str], measurement_name: str):
     if value:
       tags[attr] = value
 
-  if os.isatty(sys.stdout.fileno()):
-    logging.info("stdout is a tty, printing sensor values")
-    await print_sample(inverter, measurement_name, tags)
-    return
-
-  async for _ in stdin_lines():
-    point = await read_point(inverter, measurement_name, tags)
-    line = point.to_line_protocol()
-    logging.debug("Emitting data in the line format: %s", line)
-    print(line, flush=True)
+  while True:
+    yield await read_point(inverter, args.measurement_name, tags)
 
 
 def main():
-  logging.basicConfig(level=logging.WARNING)
-  parser = argparse.ArgumentParser(
-      prog="goodwe2influxdb",
-      description=
-      "On every new line received on stdin reads data from a local Goodwe device and outputs it to stdout in the InfluxDB line format."
-  )
-  parser.add_argument("--ip_address")  # option that takes a value
-  parser.add_argument("-m", "--measurement_name",
-                      default="photovoltaic")  # option that takes a value
-  args = parser.parse_args()
-
-  asyncio.run(get_runtime_data(args.ip_address, args.measurement_name))
+  telegraf_plugin_main.main(query_data())
 
 
 if __name__ == "__main__":
