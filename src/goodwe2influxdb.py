@@ -13,7 +13,6 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 """Queries a local Goodwe inverter device and emits its status to stdout.
 
 A query is triggered by receiving a newline in stdin (Telegraf execd input
@@ -61,9 +60,7 @@ async def read_point(inverter, measurement_name: str, tags):
 
 async def query_data() -> AsyncIterable[Point]:
   logging.basicConfig(level=logging.WARNING)
-  parser = argparse.ArgumentParser(
-      prog="goodwe2influxdb",
-      description=__doc__)
+  parser = argparse.ArgumentParser(prog="goodwe2influxdb", description=__doc__)
   parser.add_argument("--ip_address")  # option that takes a value
   parser.add_argument("-m", "--measurement_name",
                       default="photovoltaic")  # option that takes a value

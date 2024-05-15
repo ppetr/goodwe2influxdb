@@ -13,7 +13,6 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 """Queries a local AZ-router device and emits its status to stdout.
 
 A query is triggered by receiving a newline in stdin (Telegraf execd input
@@ -21,7 +20,6 @@ module's 'STDIN' signalling protocol).
 
 Data is emitted in the InfluxDB line format.
 """
-
 
 import aiohttp
 import argparse
@@ -87,9 +85,8 @@ def build_point(measurement_name: str, tags: dict[str, str], json) -> Point:
 
 async def query_data():
   logging.basicConfig(level=logging.INFO)
-  parser = argparse.ArgumentParser(
-      prog='azrouter2influxdb',
-      description=__doc__)
+  parser = argparse.ArgumentParser(prog='azrouter2influxdb',
+                                   description=__doc__)
   parser.add_argument('--ip_address', default=_DEFAULT_HOST)
   parser.add_argument('-m', '--measurement_name', default='azrouter')
   args = parser.parse_args()

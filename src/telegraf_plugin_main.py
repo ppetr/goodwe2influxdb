@@ -79,7 +79,7 @@ async def _async_main(points_fn: AsyncIterable[Point]):
       points = await it.__anext__()
     except StopAsyncIteration:
       logging.exception('The generator function stopped unexpectedly')
-      return
+      sys.exit(1)
     if isinstance(points, Point):
       points = [points]
     # Unblock the event loop by writing to stdout asynchronously.
