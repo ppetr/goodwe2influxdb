@@ -22,7 +22,9 @@ description = "Collect data from a Goodwe inverter and store them in InfluxDB"
 version = "0.1.0"
 authors = [{ name="Petr P." }]
 dependencies = [
-    "influxdb-client[ciso]",
+    "aiohttp",
+    "aiodns",
+    "influxdb-client",
     "goodwe",
 ]
 readme = "README.md"
@@ -37,3 +39,4 @@ classifiers= [
 
 [project.scripts]
 goodwe2influxdb= "goodwe2influxdb:main"
+azrouter2influxdb= "azrouter2influxdb:main"
