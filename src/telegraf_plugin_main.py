@@ -33,6 +33,13 @@ Example:
 
     def main():
       telegraf_plugin_main.main(query_data())
+
+  And in telegraf.conf:
+
+    [[inputs.execd]]
+    command = ['my_plugin.py']
+    signal = "STDIN"
+    data_format = "influx"
 """
 
 import asyncio
