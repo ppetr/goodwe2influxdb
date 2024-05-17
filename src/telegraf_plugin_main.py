@@ -45,7 +45,7 @@ Example:
 import asyncio
 import logging
 import os
-from typing import AsyncIterable, Iterable
+from typing import AsyncIterable, Iterable, Union
 import sys
 
 from influxdb_client import Point
@@ -72,7 +72,7 @@ def _emit_points(points: Iterable[Point]):
   print(flush=True, end='')
 
 
-async def _async_main(points_fn: AsyncIterable[Point]):
+async def _async_main(points_fn: AsyncIterable[Union[Point, Iterable[Point]]]):
   if os.isatty(sys.stderr.fileno()):
     async for point in points_fn:
       print('stderr is a tty, logging just a single query result:',
@@ -93,6 +93,6 @@ async def _async_main(points_fn: AsyncIterable[Point]):
     await asyncio.to_thread(_emit_points, points)
 
 
-def main(points_fn: AsyncIterable[Point]):
+def main(points_fn: AsyncIterable[Union[Point, Iterable[Point]]]):
   """Runs `points_fn` and emits its output to stdout."""
   asyncio.run(_async_main(points_fn))
