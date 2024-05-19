@@ -65,7 +65,7 @@ def unroll_json(prefix: str, json) -> Iterator[Tuple[str, Any]]:
   elif isinstance(json, list):
     try:
       for entry in json:
-        yield (prefix + str(entry['id']), str(entry['value']))
+        yield (prefix + str(entry['id']), entry['value'])
     except KeyError as ex:
       raise KeyError('Expecting lists to contain just dictionaries just `id` '
                      'and `value` items.') from ex
