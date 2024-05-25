@@ -37,7 +37,7 @@ Example:
   And in telegraf.conf:
 
     [[inputs.execd]]
-    command = ['my_plugin.py']
+    command = ["my_plugin.py"]
     signal = "STDIN"
     data_format = "influx"
 """
