@@ -6,7 +6,7 @@ long-running custom input plugins.
 [`execd`]: https://github.com/influxdata/telegraf/tree/master/plugins/inputs/execd
 
 Taking advantage of that we build a small library
-[`telegraf_plugin_main`](src/telegraf_plugin_main.py). The library takes an
+[`telegraf_plugin_main`](../src/telegraf_plugin_main.py). The library takes an
 `async` generator as an argument. The generator must `yield` a [`Point`] or
 `List[Point]` in an infinite loop. It is paused by the library until Telegraf
 asks for data, at which point the `yield` call is unblocked.
